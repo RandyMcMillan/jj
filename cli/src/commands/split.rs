@@ -13,13 +13,17 @@
 // limitations under the License.
 use std::io::Write;
 
+use itertools::Itertools;
+use jj_lib::commit::Commit;
 use jj_lib::object_id::ObjectId;
 use jj_lib::repo::Repo;
+use jj_lib::revset::{RevsetExpression, RevsetIteratorExt};
 use jj_lib::rewrite::merge_commit_trees;
 use tracing::instrument;
 
 use crate::cli_util::{CommandHelper, RevisionArg};
 use crate::command_error::CommandError;
+use crate::commands::rebase::rebase_descendants;
 use crate::description_util::{description_template_for_commit, edit_description};
 use crate::ui::Ui;
 
@@ -47,6 +51,9 @@ pub(crate) struct SplitArgs {
     /// The revision to split
     #[arg(long, short, default_value = "@")]
     revision: RevisionArg,
+    /// Split the revision into two siblings instead of a parent and child.
+    #[arg(long, short)]
+    siblings: bool,
     /// Put these paths in the first commit
     #[arg(value_hint = clap::ValueHint::AnyPath)]
     paths: Vec<String>,
@@ -77,12 +84,13 @@ You are splitting a commit in two: {}
 The diff initially shows the changes in the commit you're splitting.
 
 Adjust the right side until it shows the contents you want for the first
-(parent) commit. The remainder will be in the second commit. If you
+{} commit. The remainder will be in the {} commit. If you
 don't make any changes, then the operation will be aborted.
 ",
-        tx.format_commit_summary(&commit)
+        tx.format_commit_summary(&commit),
+        if args.siblings { "" } else { "(parent)" },
+        if args.siblings { "sibling" } else { "child" }
     );
-
     // Prompt the user to select the changes they want for the first commit.
     let selected_tree_id =
         diff_selector.select(&base_tree, &end_tree, matcher.as_ref(), Some(&instructions))?;
@@ -106,7 +114,7 @@ don't make any changes, then the operation will be aborted.
         ui,
         command.settings(),
         tx.base_workspace_helper(),
-        "Enter commit description for the first part (parent).",
+        "Enter a description for the first commit.",
         commit.description(),
         &base_tree,
         &selected_tree,
@@ -120,6 +128,20 @@ don't make any changes, then the operation will be aborted.
         .write()?;
 
     // Create the second commit, which includes everything the user didn't select.
+    // TODO(emesterhazy): Maybe there's a prettier way to write this or we could
+    //   move the commit creation code to helper functions.
+    let (second_tree, second_base_tree, second_commit_parents) = if args.siblings {
+        (
+            // Merge the original commit tree with its parent using the tree
+            // containing the user selected changes as the base for the merge.
+            // This results in a tree with the changes the user didn't select.
+            end_tree.merge(&selected_tree, &base_tree)?,
+            &base_tree,
+            commit.parent_ids().to_vec(),
+        )
+    } else {
+        (end_tree, &selected_tree, vec![first_commit.id().clone()])
+    };
     let second_description = if commit.description().is_empty() {
         // If there was no description before, don't ask for one for the second commit.
         "".to_string()
@@ -128,30 +150,53 @@ don't make any changes, then the operation will be aborted.
             ui,
             command.settings(),
             tx.base_workspace_helper(),
-            "Enter commit description for the second part (child).",
+            "Enter a description for the second commit.",
             commit.description(),
-            &selected_tree,
-            &end_tree,
+            second_base_tree,
+            &second_tree,
         )?;
         edit_description(tx.base_repo(), &second_template, command.settings())?
     };
     let second_commit = tx
         .mut_repo()
         .rewrite_commit(command.settings(), &commit)
-        .set_parents(vec![first_commit.id().clone()])
-        .set_tree_id(commit.tree_id().clone())
+        .set_parents(second_commit_parents)
+        .set_tree_id(second_tree.id())
+        // Generate a new change id so that the commit being split doesn't
+        // become divergent.
         .generate_new_change_id()
         .set_description(second_description)
         .write()?;
 
-    // We want only the `second_commit` to inherit `commit`'s branches and
-    // descendants.
+    // Mark the commit being split as rewritten to the second commit. As a
+    // result, if @ points to the commit being split, it will point to the
+    // second commit after the command finishes.
     tx.mut_repo()
         .set_rewritten_commit(commit.id().clone(), second_commit.id().clone());
-    let num_rebased = tx.mut_repo().rebase_descendants(command.settings())?;
+
+    // Rebase descendants of the commit being split.
+    let new_parents = if args.siblings {
+        vec![first_commit.clone(), second_commit.clone()]
+    } else {
+        vec![second_commit.clone()]
+    };
+    let children: Vec<Commit> = RevsetExpression::commit(commit.id().clone())
+        .children()
+        .evaluate_programmatic(tx.base_repo().as_ref())?
+        .iter()
+        .commits(tx.base_repo().store())
+        .try_collect()?;
+    let num_rebased = rebase_descendants(
+        &mut tx,
+        command.settings(),
+        &new_parents,
+        &children,
+        Default::default(),
+    )?;
     if num_rebased > 0 {
         writeln!(ui.stderr(), "Rebased {num_rebased} descendant commits")?;
     }
+
     write!(ui.stderr(), "First part: ")?;
     tx.write_commit_summary(ui.stderr_formatter().as_mut(), &first_commit)?;
     write!(ui.stderr(), "\nSecond part: ")?;
