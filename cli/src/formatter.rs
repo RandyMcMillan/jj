@@ -166,6 +166,32 @@ impl FormatterFactory {
     }
 }
 
+pub struct SilentFormatter;
+
+impl Write for SilentFormatter {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl Formatter for SilentFormatter {
+    fn raw(&mut self) -> &mut dyn Write {
+        self
+    }
+
+    fn push_label(&mut self, _label: &str) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn pop_label(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 pub struct PlainTextFormatter<W> {
     output: W,
 }

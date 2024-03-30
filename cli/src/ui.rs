@@ -23,7 +23,9 @@ use tracing::instrument;
 
 use crate::command_error::{config_error_with_message, CommandError};
 use crate::config::CommandNameAndArgs;
-use crate::formatter::{Formatter, FormatterFactory, HeadingLabeledWriter, LabeledWriter};
+use crate::formatter::{
+    Formatter, FormatterFactory, HeadingLabeledWriter, LabeledWriter, SilentFormatter,
+};
 
 const BUILTIN_PAGER_NAME: &str = ":builtin";
 
@@ -163,6 +165,7 @@ impl Write for UiStderr<'_> {
 
 pub struct Ui {
     color: bool,
+    quiet: bool,
     pager_cmd: CommandNameAndArgs,
     paginate: PaginationChoice,
     progress_indicator: bool,
@@ -245,6 +248,7 @@ fn pager_setting(config: &config::Config) -> Result<CommandNameAndArgs, CommandE
 impl Ui {
     pub fn with_config(config: &config::Config) -> Result<Ui, CommandError> {
         let color = use_color(color_setting(config));
+        let quiet = config.get_bool("ui.quiet").unwrap_or_default();
         // Sanitize ANSI escape codes if we're printing to a terminal. Doesn't affect
         // ANSI escape codes that originate from the formatter itself.
         let sanitize = io::stdout().is_terminal();
@@ -252,6 +256,7 @@ impl Ui {
         let progress_indicator = progress_indicator_setting(config);
         Ok(Ui {
             color,
+            quiet,
             formatter_factory,
             pager_cmd: pager_setting(config)?,
             paginate: pagination_setting(config)?,
@@ -376,7 +381,11 @@ impl Ui {
     /// Writes a message that's a status update not part of the command's main
     /// output.
     pub fn status(&self) -> Box<dyn Formatter + '_> {
-        self.stderr_formatter()
+        if self.quiet {
+            Box::new(SilentFormatter)
+        } else {
+            self.stderr_formatter()
+        }
     }
 
     /// Writer to print hint with the default "Hint: " heading.
