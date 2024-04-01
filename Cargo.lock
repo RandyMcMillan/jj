@@ -1470,62 +1470,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gnostr-cli"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "assert_matches",
- "async-trait",
- "cargo_metadata",
- "chrono",
- "clap",
- "clap-markdown",
- "clap_complete",
- "clap_complete_nushell",
- "clap_mangen",
- "config",
- "criterion",
- "crossterm",
- "dirs",
- "esl01-renderdag",
- "futures 0.3.30",
- "git2",
- "gix",
- "gnostr-cli",
- "hex",
- "indexmap",
- "indoc",
- "insta",
- "itertools 0.12.1",
- "jj-lib",
- "libc",
- "maplit",
- "minus",
- "once_cell",
- "pest",
- "pest_derive",
- "pollster",
- "regex",
- "rpassword",
- "scm-record",
- "serde",
- "slab",
- "strsim",
- "tempfile",
- "test-case",
- "testutils",
- "textwrap",
- "thiserror",
- "timeago",
- "toml_edit",
- "tracing",
- "tracing-chrome",
- "tracing-subscriber",
- "unicode-width",
-]
-
-[[package]]
 name = "half"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1717,6 +1661,62 @@ name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
+
+[[package]]
+name = "jj-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "assert_matches",
+ "async-trait",
+ "cargo_metadata",
+ "chrono",
+ "clap",
+ "clap-markdown",
+ "clap_complete",
+ "clap_complete_nushell",
+ "clap_mangen",
+ "config",
+ "criterion",
+ "crossterm",
+ "dirs",
+ "esl01-renderdag",
+ "futures 0.3.30",
+ "git2",
+ "gix",
+ "hex",
+ "indexmap",
+ "indoc",
+ "insta",
+ "itertools 0.12.1",
+ "jj-cli",
+ "jj-lib",
+ "libc",
+ "maplit",
+ "minus",
+ "once_cell",
+ "pest",
+ "pest_derive",
+ "pollster",
+ "regex",
+ "rpassword",
+ "scm-record",
+ "serde",
+ "slab",
+ "strsim",
+ "tempfile",
+ "test-case",
+ "testutils",
+ "textwrap",
+ "thiserror",
+ "timeago",
+ "toml_edit",
+ "tracing",
+ "tracing-chrome",
+ "tracing-subscriber",
+ "unicode-width",
+]
 
 [[package]]
 name = "jj-lib"

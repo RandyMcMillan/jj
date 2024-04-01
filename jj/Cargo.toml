@@ -1,5 +1,5 @@
 [package]
-name = "gnostr-cli"
+name = "jj-cli"
 description = "gnostr: a git+nostr workflow utility."
 default-run = "gnostr"
 autotests = false
@@ -91,7 +91,7 @@ insta = { workspace = true }
 test-case = { workspace = true }
 testutils = { workspace = true }
 # https://github.com/rust-lang/cargo/issues/2911#issuecomment-1483256987
-gnostr-cli = { path = ".", features = ["test-fakes"], default-features = false }
+jj-cli = { path = ".", features = ["test-fakes"], default-features = false }
 
 [features]
 default = ["watchman"]
