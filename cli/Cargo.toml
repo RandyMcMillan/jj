@@ -14,8 +14,12 @@ documentation = { workspace = true }
 keywords = { workspace = true }
 
 [[bin]]
-name = "gnostr"
+name = "jj"
 path = "src/main.rs"
+
+[[bin]]
+name = "gnostr"
+path = "../src/bin/gnostr.rs"
 
 [[bin]]
 name = "fake-editor"
