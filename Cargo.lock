@@ -2893,6 +2893,7 @@ dependencies = [
  "config",
  "git2",
  "hex",
+ "insta",
  "itertools 0.12.1",
  "jj-lib",
  "rand",
